@@ -1,15 +1,23 @@
 {
-  "name": "fakernews-backend",
-  "version": "1.0.50",
+  "name": "@fakernews/backend",
+  "version": "0.0.0",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "bun run --watch src/index.ts"
   },
   "dependencies": {
-    "elysia": "latest"
+    "@elysiajs/eden": "^1.4.6",
+    "@elysiajs/openapi": "^1.4.12",
+    "@libsql/client": "^0.15.15",
+    "dotenv": "^17.2.3",
+    "drizzle-orm": "^0.45.1",
+    "drizzle-zod": "^0.8.3",
+    "elysia": "latest",
+    "zod": "^4.2.1"
   },
   "devDependencies": {
-    "bun-types": "latest"
+    "bun-types": "latest",
+    "drizzle-kit": "^0.31.8"
   },
   "module": "src/index.js"
 }
