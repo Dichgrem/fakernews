@@ -1,22 +1,9 @@
-import { Elysia, status, t } from "elysia";
+import { Elysia, t } from "elysia";
 import { InsertItem, SelectItem } from "./schema";
-import { db } from "@/db";
-import { eq } from "drizzle-orm";
-import { items } from "@/db/schema";
+import { deleteItem, getItemById, insertItem } from "./service";
 
 export const item = new Elysia({ prefix: "/item" })
-  .get("/:id",
-    async ({ params }) => {
-      const item = await db.query.items.findFirst({
-        where: eq(items.id, params.id)
-      });
-
-      if (!item) {
-        return status(404, "Not Found");
-      }
-
-      return item;
-    },
+  .get("/:id", getItemById,
     {
       params: t.Object({ id: t.Integer() }),
       response: {
@@ -25,22 +12,14 @@ export const item = new Elysia({ prefix: "/item" })
       }
     }
   )
-  .post("/",
-    async ({ body }) => {
-      const [inserted] = await db.insert(items).values(body).returning();
-      return inserted;
-    },
+  .post("/", insertItem,
     {
       body: InsertItem,
       response: {
         200: SelectItem
       }
     })
-  .route("DELETE", "/:id",
-    async ({ params }) => {
-      const affected = (await db.delete(items).where(eq(items.id, params.id))).rowsAffected;
-      if (affected === 0) return status(404);
-    },
+  .route("DELETE", "/:id", deleteItem,
     {
       params: t.Object({ id: t.Integer() }),
     });

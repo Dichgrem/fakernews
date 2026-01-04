@@ -27,14 +27,14 @@ export const items = sqliteTable("items", {
     .references((): AnySQLiteColumn => items.id, {
       onDelete: "cascade",
     }),
-  poll: integer({ mode: "number" })
-    .references((): AnySQLiteColumn => items.id, {
-      onDelete: "cascade",
-    }),
+  // poll: integer({ mode: "number" })
+  //   .references((): AnySQLiteColumn => items.id, {
+  //     onDelete: "cascade",
+  //   }),
 
   url: text(),
 
-  score: integer(),
+  score: integer().default(0),
 
   title: text(),
 });
@@ -66,13 +66,13 @@ export const itemsRelations = relations(items, ({ one, many }) => ({
     relationName: "parent-kids"
   }),
 
-  poll: one(items, {
-    fields: [items.poll],
-    references: [items.id],
-    relationName: "poll-opt"
-  }),
+  // poll: one(items, {
+  //   fields: [items.poll],
+  //   references: [items.id],
+  //   relationName: "poll-opt"
+  // }),
 
-  parts: many(items, {
-    relationName: "poll-opt"
-  }),
+  // parts: many(items, {
+  //   relationName: "poll-opt"
+  // }),
 }));
