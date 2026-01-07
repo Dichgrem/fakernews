@@ -1,10 +1,8 @@
 import { env } from '@/env';
-import { drizzle } from 'drizzle-orm/libsql';
+import { drizzle } from 'drizzle-orm/bun-sqlite';
+import { Database } from 'bun:sqlite';
 import * as schema from './schema';
 
-export const db = drizzle({
-  connection: {
-    url: env.DATABASE_URL
-  },
-  schema
-});
+const sqlite = new Database(env.DATABASE_URL.replace('file:', ''));
+
+export const db = drizzle(sqlite, { schema });

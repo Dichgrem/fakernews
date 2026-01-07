@@ -5,16 +5,19 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vue-tsc && vite build",
     "preview": "vite preview"
   },
   "dependencies": {
+    "@elysiajs/eden": "^1.4.6",
     "vue": "^3.4.21",
     "vue-router": "^4.3.0"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.0.4",
+    "typescript": "^5.4.5",
     "vite": "^5.2.8",
-    "vite-plugin-vue-devtools": "7.6.5"
+    "vite-plugin-vue-devtools": "7.6.5",
+    "vue-tsc": "^2.0.21"
   }
 }

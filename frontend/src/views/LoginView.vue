@@ -1,6 +1,8 @@
 <script setup>
 import { ref } from "vue";
 import { useRouter } from "vue-router";
+import { useAuth } from "../auth";
+import { api } from "../api";
 
 const username = ref("");
 const password = ref("");
@@ -8,18 +10,32 @@ const isRegister = ref(false);
 const loading = ref(false);
 const error = ref(null);
 const router = useRouter();
+const auth = useAuth();
 
 const handleSubmit = async () => {
   loading.value = true;
   error.value = null;
+  
+  if (!username.value) {
+    error.value = "Username is required.";
+    loading.value = false;
+    return;
+  }
+
   try {
-    // TODO: Replace with actual API call to login/register
-    console.log(
-      `Attempting to ${isRegister.value ? "register" : "login"} with`,
-      { username: username.value },
-    );
-    await new Promise((r) => setTimeout(r, 500));
-    // router.push("/");
+    if (isRegister.value) {
+      // Register new user
+      await api.createUser(username.value);
+    } else {
+      // For "login", we just check if the user exists.
+      const existingUser = await api.getUser(username.value);
+      if (!existingUser) {
+        throw new Error("User does not exist. Please register first.");
+      }
+    }
+    // If registration or user check is successful, "log in" the user
+    auth.login(username.value);
+    router.push("/");
   } catch (e) {
     error.value = e.message;
   } finally {

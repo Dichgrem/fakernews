@@ -139,7 +139,7 @@ const games = new Elysia({ prefix: "/games" })
     },
   })
 
-  .get("/leaderboard\/:game", async ({ params, query }) => {
+  .get("/leaderboard/:game", async ({ params, query }) => {
     const limit = query.limit ? parseInt(query.limit) : 10;
 
     try {

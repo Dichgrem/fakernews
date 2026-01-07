@@ -1,15 +1,13 @@
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 import VueDevTools from "vite-plugin-vue-devtools";
+import path from 'path';
 
 export default defineConfig({
   plugins: [vue(), VueDevTools()],
-  server: {
-    proxy: {
-      "/api": {
-        target: "http://localhost:3000", // For Elysia
-        changeOrigin: true,
-      },
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
     },
   },
 });

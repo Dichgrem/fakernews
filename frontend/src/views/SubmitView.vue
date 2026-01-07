@@ -2,8 +2,10 @@
 import { ref } from "vue";
 import { useRouter } from "vue-router";
 import { api } from "../api";
+import { useAuth } from "../auth";
 
 const router = useRouter();
+const auth = useAuth();
 const title = ref("");
 const url = ref("");
 const text = ref("");
@@ -17,6 +19,10 @@ const handleSubmit = async () => {
   success.value = false;
 
   try {
+    if (!auth.user.value) {
+      throw new Error("You must be logged in to submit a story.");
+    }
+
     const trimmedTitle = title.value.trim();
     const trimmedUrl = url.value.trim();
     const trimmedText = text.value.trim();
@@ -34,7 +40,8 @@ const handleSubmit = async () => {
     const result = await api.submitStory(
       trimmedTitle,
       trimmedUrl || null,
-      trimmedText || null
+      trimmedText || null,
+      auth.user.value
     );
 
     success.value = true;

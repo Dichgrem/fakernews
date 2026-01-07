@@ -1,9 +1,11 @@
 <script setup>
 import { RouterLink, useRoute } from "vue-router";
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import logoUrl from "../assets/logo.svg";
+import { useAuth } from "../auth";
 
 const route = useRoute();
+const auth = useAuth();
 const currentPath = computed(() => route.path);
 
 const navItems = [
@@ -12,7 +14,28 @@ const navItems = [
   { name: "Best", path: "/best" },
   { name: "Ask", path: "/ask" },
   { name: "Show", path: "/show" },
+  { name: "Jobs", path: "/jobs" },
+  { name: "Comments", path: "/comments" },
 ];
+
+const gameItems = [
+  { name: "2048", path: "/game/2048" },
+  { name: "Snake", path: "/game/snake" },
+  { name: "Flappy", path: "/game/flappybird" },
+  { name: "Leaders", path: "/leaderboard" },
+];
+
+const isGamesActive = computed(() => {
+  return gameItems.some(item => currentPath.value.startsWith(item.path));
+});
+
+const handleLogout = () => {
+  if (confirm("Are you sure you want to log out?")) {
+    auth.logout();
+    // Redirect to home or login page after logout
+    route.path !== '/' && (window.location.href = '/');
+  }
+};
 </script>
 
 <template>
@@ -36,9 +59,31 @@ const navItems = [
           </RouterLink>
         </nav>
 
+        <!-- Games Dropdown -->
+        <div class="nav-item-dropdown" :class="{ active: isGamesActive }">
+          <span class="nav-link dropdown-trigger">Games ▾</span>
+          <div class="dropdown-menu">
+            <RouterLink
+              v-for="item in gameItems"
+              :key="item.path"
+              :to="item.path"
+              class="dropdown-item"
+              :class="{ active: currentPath.startsWith(item.path) }"
+            >
+              {{ item.name }}
+            </RouterLink>
+          </div>
+        </div>
+
         <div class="nav-actions">
-          <RouterLink to="/submit" class="nav-btn submit">Submit</RouterLink>
-          <RouterLink to="/login" class="nav-btn login">Login</RouterLink>
+          <template v-if="auth.user.value">
+            <RouterLink to="/submit" class="nav-btn submit">Submit</RouterLink>
+            <RouterLink :to="`/user/${auth.user.value}`" class="nav-link user-link">
+              {{ auth.user.value }}
+            </RouterLink>
+            <button @click="handleLogout" class="nav-btn logout">Logout</button>
+          </template>
+          <RouterLink v-else to="/login" class="nav-btn login">Login</RouterLink>
         </div>
       </div>
     </div>
@@ -58,29 +103,22 @@ const navItems = [
 .nav-content {
   display: flex;
   align-items: center;
-  gap: 24px;
+  gap: 16px; /* Reduced from 24px */
   height: 60px;
 }
 
-.logo {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-weight: 700;
-  font-size: 20px;
-  color: var(--text-primary);
-}
-
-.logo-icon {
-  width: 28px;
-  height: 28px;
-  color: var(--accent);
-}
+/* ... other styles ... */
 
 .nav-links {
   display: flex;
-  gap: 16px;
+  gap: 6px; /* Reduced from 8px */
   flex: 1;
+  align-items: center;
+  overflow-x: auto; /* Allow scrolling if it still overflows on tiny screens */
+  scrollbar-width: none; /* Hide scrollbar Firefox */
+}
+.nav-links::-webkit-scrollbar {
+  display: none; /* Hide scrollbar Chrome/Safari */
 }
 
 .nav-link {
@@ -89,6 +127,7 @@ const navItems = [
   padding: 6px 12px;
   border-radius: 6px;
   transition: var(--transition-fast);
+  white-space: nowrap; /* Prevent text wrapping */
 }
 
 .nav-link:hover {
@@ -101,9 +140,71 @@ const navItems = [
   background: var(--bg-hover);
 }
 
+/* Dropdown Styles */
+.nav-item-dropdown {
+  position: relative;
+  display: inline-block;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.dropdown-trigger {
+  cursor: pointer;
+}
+
+.dropdown-menu {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background-color: var(--bg-primary);
+  min-width: 160px;
+  box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  padding: 8px 0;
+  z-index: 101;
+}
+
+.nav-item-dropdown:hover .dropdown-menu {
+  display: block;
+}
+
+.dropdown-item {
+  display: block;
+  padding: 8px 16px;
+  color: var(--text-primary);
+  text-decoration: none;
+  transition: background-color 0.2s;
+}
+
+.dropdown-item:hover {
+  background-color: var(--bg-hover);
+}
+
+.dropdown-item.active {
+  color: var(--accent);
+  background-color: var(--bg-hover);
+  font-weight: bold;
+}
+
+.nav-item-dropdown.active .dropdown-trigger {
+  color: var(--accent);
+  font-weight: bold;
+}
+
+
 .nav-actions {
   display: flex;
+  align-items: center;
   gap: 12px;
+  flex-shrink: 0; /* Prevent actions from shrinking */
+}
+
+.user-link {
+  font-weight: 600;
 }
 
 .nav-btn {
@@ -112,6 +213,7 @@ const navItems = [
   font-weight: 500;
   transition: var(--transition-fast);
   text-align: center;
+  white-space: nowrap;
 }
 
 .nav-btn.login {
@@ -130,6 +232,17 @@ const navItems = [
 
 .nav-btn.submit:hover {
   background-color: var(--accent-hover);
+}
+
+.nav-btn.logout {
+  background-color: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+}
+
+.nav-btn.logout:hover {
+  background-color: var(--bg-hover);
+  color: var(--text-primary);
 }
 
 @media (max-width: 768px) {
@@ -157,3 +270,4 @@ const navItems = [
   }
 }
 </style>
+

@@ -1,7 +1,7 @@
 import { status } from "elysia";
 import { db } from "@/db";
 import { eq, and, sql } from "drizzle-orm";
-import { items } from "@/db/schema";
+import { items, users } from "@/db/schema";
 import { InsertItem } from "./schema";
 
 export const getItemById = async ({ params }: { params: { id: number } }) => {
@@ -88,7 +88,7 @@ export const voteItem = async ({
 }) => {
   const delta = body.type === "up" ? 1 : -1;
 
-  const [updated] = await db
+  const [updatedItem] = await db
     .update(items)
     .set({
       score: sql`
@@ -108,11 +108,29 @@ export const voteItem = async ({
     .returning({
       id: items.id,
       score: items.score,
+      by: items.by,
     });
 
-  if (!updated) {
+  if (!updatedItem) {
     return status(404, "Not Found or Not Votable");
   }
 
-  return updated;
+  if (updatedItem.by) {
+    await db
+      .update(users)
+      .set({
+        karma: sql`
+          CASE
+            WHEN ${users.karma} + ${delta} < 0 THEN 0
+            ELSE ${users.karma} + ${delta}
+          END
+        `,
+      })
+      .where(eq(users.id, updatedItem.by));
+  }
+
+  return {
+    id: updatedItem.id,
+    score: updatedItem.score,
+  };
 };

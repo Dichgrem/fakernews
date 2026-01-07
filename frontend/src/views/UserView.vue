@@ -13,7 +13,7 @@ const userId = computed(() => route.params.id);
 
 const joinedDate = computed(() => {
   if (!user.value?.created) return "";
-  return new Date(user.value.created * 1000).toLocaleDateString("en-US", {
+  return new Date(user.value.created).toLocaleDateString("en-US", {
     year: "numeric",
     month: "long",
   });

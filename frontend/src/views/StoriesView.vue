@@ -81,7 +81,7 @@ watch(
         v-for="(story, index) in stories"
         :key="story.id"
         :story="story"
-        :rank="(page - 1) * 30 + index + 1"
+        :rank="index + 1"
       />
     </div>
     

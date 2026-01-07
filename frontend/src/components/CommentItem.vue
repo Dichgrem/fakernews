@@ -15,7 +15,7 @@ const isCollapsed = ref(false);
 
 const timeAgo = (timestamp) => {
   if (!timestamp) return "";
-  const seconds = Math.floor((Date.now() - timestamp * 1000) / 1000);
+  const seconds = Math.floor((Date.now() - timestamp) / 1000);
   let interval = seconds / 31536000;
   if (interval > 1) return Math.floor(interval) + "y";
   interval = seconds / 2592000;

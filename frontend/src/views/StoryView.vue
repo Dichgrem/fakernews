@@ -2,11 +2,13 @@
 import { ref, onMounted, computed, watch } from "vue";
 import { useRoute } from "vue-router";
 import { api } from "../api";
+import { useAuth } from "../auth";
 import LoadingSpinner from "../components/LoadingSpinner.vue";
 import CommentItem from "../components/CommentItem.vue";
 import StoryItem from "../components/StoryItem.vue";
 
 const route = useRoute();
+const auth = useAuth();
 const story = ref(null);
 const comments = ref([]);
 const loading = ref(false);
@@ -35,10 +37,14 @@ const loadData = async () => {
   loading.value = true;
   error.value = null;
   try {
-    [story.value, comments.value] = await Promise.all([
-      api.getStory(storyId.value),
-      api.getComments(storyId.value),
+    const id = storyId.value;
+    if (!id) return;
+    const [_story, _comments] = await Promise.all([
+      api.getStory(id),
+      api.getComments(id),
     ]);
+    story.value = _story;
+    comments.value = _comments;
   } catch (e) {
     error.value = e instanceof Error ? e.message : "Failed to load story.";
     console.error(e);
@@ -48,11 +54,14 @@ const loadData = async () => {
 };
 
 const submitComment = async () => {
-  if (!newComment.value.trim()) return;
+  if (!newComment.value.trim() || !auth.user.value) return;
   try {
+    const id = storyId.value;
+    if (!id) return;
     const comment = await api.submitComment(
-      storyId.value,
-      newComment.value
+      id,
+      newComment.value,
+      auth.user.value
     );
     comments.value.unshift(comment);
     newComment.value = "";
@@ -85,7 +94,7 @@ watch(storyId, loadData, { immediate: true });
           {{ story.descendants || 0 }} Comments
         </h2>
 
-        <div class="comment-form">
+        <div v-if="auth.user.value" class="comment-form">
           <textarea
             v-model="newComment"
             placeholder="Add a comment..."

@@ -23,65 +23,66 @@ const domain = computed(() => {
 });
 
 const timeAgo = computed(() => {
-  const seconds = Math.floor((Date.now() - props.story.time * 1000) / 1000);
+  const seconds = Math.floor((Date.now() - props.story.time) / 1000);
   if (seconds < 60) return "just now";
   if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+  if (seconds < 86400) return `${Math.floor(seconds / 86400)}h ago`;
   return `${Math.floor(seconds / 86400)}d ago`;
 });
 
-const handleUpvote = () => {
+const handleUpvote = (event) => {
+  event.stopPropagation(); // Prevent the parent RouterLink from navigating
   // TODO: 实现点赞逻辑
   console.log("Upvote story:", props.story.id);
 };
 </script>
 
 <template>
-  <article class="story-item">
-    <div class="story-rank" v-if="rank">{{ rank }}.</div>
-    
-    <button class="upvote-btn" @click="handleUpvote" title="Upvote">
-      <svg width="10" height="10" viewBox="0 0 10 10">
-        <path d="M5 0 L10 10 L0 10 Z" fill="currentColor" />
-      </svg>
-    </button>
-    
-    <div class="story-content">
-      <div class="story-title-row">
-        <a 
-          v-if="story.url" 
-          :href="story.url" 
-          target="_blank" 
-          rel="noopener noreferrer"
-          class="story-title"
-        >
-          {{ story.title }}
-        </a>
-        <RouterLink 
-          v-else 
-          :to="`/story/${story.id}`"
-          class="story-title"
-        >
-          {{ story.title }}
-        </RouterLink>
-        <span v-if="domain" class="story-domain">({{ domain }})</span>
-      </div>
+  <RouterLink :to="`/story/${story.id}`" custom v-slot="{ href, navigate }">
+    <article class="story-item" :href="href" @click="navigate">
+      <div class="story-rank" v-if="rank">{{ rank }}.</div>
       
-      <div class="story-meta">
-        <span class="story-score">{{ story.score }} points</span>
-        <span class="separator">•</span>
-        <RouterLink :to="`/user/${story.by}`" class="story-author">
-          {{ story.by }}
-        </RouterLink>
-        <span class="separator">•</span>
-        <span class="story-time">{{ timeAgo }}</span>
-        <span class="separator">•</span>
-        <RouterLink :to="`/story/${story.id}`" class="story-comments">
-          {{ story.descendants || 0 }} comments
-        </RouterLink>
+      <button class="upvote-btn" @click="handleUpvote" title="Upvote">
+        <svg width="10" height="10" viewBox="0 0 10 10">
+          <path d="M5 0 L10 10 L0 10 Z" fill="currentColor" />
+        </svg>
+      </button>
+      
+      <div class="story-content">
+        <div class="story-title-row">
+          <span 
+            class="story-title"
+          >
+            {{ story.title }}
+          </span>
+          <a 
+            v-if="domain"
+            :href="story.url" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            class="story-domain"
+            @click.stop
+          >
+            ({{ domain }})
+          </a>
+        </div>
+        
+        <div class="story-meta">
+          <span class="story-score">{{ story.score }} points</span>
+          <span class="separator">•</span>
+          <RouterLink :to="`/user/${story.by}`" class="story-author" @click.stop>
+            {{ story.by }}
+          </RouterLink>
+          <span class="separator">•</span>
+          <span class="story-time">{{ timeAgo }}</span>
+          <span class="separator">•</span>
+          <span class="story-comments">
+            {{ story.descendants || 0 }} comments
+          </span>
+        </div>
       </div>
-    </div>
-  </article>
+    </article>
+  </RouterLink>
 </template>
 
 <style scoped>
@@ -92,10 +93,19 @@ const handleUpvote = () => {
   background: var(--bg-primary);
   border-radius: 8px;
   transition: background 0.2s;
+  cursor: pointer;
 }
 
 .story-item:hover {
   background: var(--bg-hover);
+}
+
+.story-item:hover .story-title {
+  color: var(--link);
+}
+
+.story-item:hover .story-comments {
+  color: var(--link);
 }
 
 .story-rank {
@@ -136,15 +146,17 @@ const handleUpvote = () => {
   font-weight: 500;
   line-height: 1.4;
   color: var(--text-primary);
-}
-
-.story-title:hover {
-  color: var(--link);
+  text-decoration: none;
 }
 
 .story-domain {
   font-size: 13px;
   color: var(--text-tertiary);
+}
+
+.story-domain:hover {
+  color: var(--link);
+  text-decoration: underline;
 }
 
 .story-meta {
@@ -169,8 +181,7 @@ const handleUpvote = () => {
   color: var(--text-secondary);
 }
 
-.story-author:hover,
-.story-comments:hover {
+.story-author:hover {
   color: var(--link);
 }
 
