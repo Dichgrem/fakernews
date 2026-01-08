@@ -2,6 +2,7 @@
 import { computed } from "vue";
 import { RouterLink } from "vue-router";
 import { api } from "@/api";
+import { useAuth } from "@/auth";
 
 const props = defineProps({
   story: {
@@ -13,6 +14,8 @@ const props = defineProps({
     default: null,
   },
 });
+
+const { user } = useAuth();
 
 const domain = computed(() => {
   if (!props.story.url) return "";
@@ -31,16 +34,33 @@ const timeAgo = computed(() => {
   return `${Math.floor(seconds / 86400)}d ago`;
 });
 
+const isUpvoted = computed(() => props.story.upvoted || false);
+
 const handleUpvote = async (event) => {
   event.stopPropagation();
-  
-  props.story.score += 1;
-  
+
+  if (!user.value) {
+    alert("Please log in to upvote");
+    return;
+  }
+
+  // 乐观更新：切换状态
+  const wasUpvoted = isUpvoted.value;
+  props.story.upvoted = !wasUpvoted;
+  props.story.score += wasUpvoted ? -1 : 1;
+
   try {
-    await api.voteItem(props.story.id, 'up');
+    const result = await api.voteItem(props.story.id, 'up', user.value);
+    // 同步服务器返回的状态
+    if (result) {
+      props.story.score = result.score;
+      props.story.upvoted = result.upvoted;
+    }
   } catch (error) {
-    props.story.score -= 1;
-    console.error("Failed to upvote:", error);
+    // 出错时回滚
+    props.story.upvoted = wasUpvoted;
+    props.story.score += wasUpvoted ? 1 : -1;
+    console.error("Failed to toggle upvote:", error);
   }
 };
 
@@ -52,7 +72,12 @@ const handleUpvote = async (event) => {
       <div class="story-rank" v-if="rank">{{ rank }}.</div>
       
       <div class="upvote-score-container">
-        <button class="upvote-btn" @click="handleUpvote" title="Upvote">
+        <button
+          class="upvote-btn"
+          :class="{ upvoted: isUpvoted }"
+          @click="handleUpvote"
+          title="Upvote"
+        >
           <svg width="10" height="10" viewBox="0 0 10 10">
             <path d="M5 0 L10 10 L0 10 Z" fill="currentColor" />
           </svg>
@@ -143,6 +168,10 @@ const handleUpvote = async (event) => {
 .upvote-btn:hover {
   color: var(--accent);
   transform: scale(1.2);
+}
+
+.upvote-btn.upvoted {
+  color: #ff6600;
 }
 
 .story-score {

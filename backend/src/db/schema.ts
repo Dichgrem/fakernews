@@ -49,6 +49,25 @@ export const users = sqliteTable("users", {
   about: text(),
 });
 
+export const upvotes = sqliteTable("upvotes", {
+  id: integer({ mode: "number" }).primaryKey({ autoIncrement: true }),
+
+  userId: text().notNull()
+    .references(() => users.id, {
+      onDelete: "cascade",
+      onUpdate: "cascade",
+    }),
+
+  itemId: integer({ mode: "number" }).notNull()
+    .references(() => items.id, {
+      onDelete: "cascade",
+      onUpdate: "cascade",
+    }),
+
+  time: integer().notNull()
+    .$defaultFn(() => new Date().getTime()),
+});
+
 // Unified game scores table
 export const gameScores = sqliteTable("game_scores", {
   id: integer({ mode: "number" }).primaryKey({ autoIncrement: true }),
@@ -85,6 +104,8 @@ export const itemsRelations = relations(items, ({ one, many }) => ({
     relationName: "parent-kids"
   }),
 
+  upvotes: many(upvotes),
+
   // poll: one(items, {
   //   fields: [items.poll],
   //   references: [items.id],
@@ -99,11 +120,23 @@ export const itemsRelations = relations(items, ({ one, many }) => ({
 export const usersRelations = relations(users, ({ many }) => ({
   items: many(items),
   gameScores: many(gameScores),
+  upvotes: many(upvotes),
 }));
 
 export const gameScoresRelations = relations(gameScores, ({ one }) => ({
   user: one(users, {
     fields: [gameScores.userId],
     references: [users.id],
+  }),
+}));
+
+export const upvotesRelations = relations(upvotes, ({ one }) => ({
+  user: one(users, {
+    fields: [upvotes.userId],
+    references: [users.id],
+  }),
+  item: one(items, {
+    fields: [upvotes.itemId],
+    references: [items.id],
   }),
 }));

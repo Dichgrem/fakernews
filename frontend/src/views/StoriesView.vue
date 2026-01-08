@@ -4,8 +4,10 @@ import { useRoute } from "vue-router";
 import StoryItem from "../components/StoryItem.vue";
 import LoadingSpinner from "../components/LoadingSpinner.vue";
 import { api } from "../api";
+import { useAuth } from "../auth";
 
 const route = useRoute();
+const { user } = useAuth();
 const stories = ref([]);
 const loading = ref(false);
 const error = ref(null);
@@ -16,6 +18,23 @@ const type = computed(() => route.params.type || "top");
 const pageTitle = computed(
   () => `${type.value.charAt(0).toUpperCase() + type.value.slice(1)} Stories`,
 );
+
+const loadUpvoteStatus = async (storiesList) => {
+  if (!user.value) return;
+
+  try {
+    const storyIds = storiesList.map(s => s.id.toString());
+    const statusMap = await api.checkMultipleUpvoteStatus(storyIds, user.value);
+
+    // 将 upvote 状态添加到每个故事对象
+    storiesList.forEach(story => {
+      story.upvoted = statusMap[story.id] || false;
+    });
+  } catch (e) {
+    console.error("Error loading upvote status:", e);
+    // 不阻塞主要流程，只记录错误
+  }
+};
 
 const loadStories = async (isLoadMore = false) => {
   if (loading.value) return;
@@ -36,6 +55,9 @@ const loadStories = async (isLoadMore = false) => {
     } else {
       stories.value = newStories;
     }
+
+    // 加载 upvote 状态
+    await loadUpvoteStatus(newStories);
   } catch (e) {
     error.value = e instanceof Error ? e.message : "Failed to load stories.";
     console.error("Error loading stories:", e);

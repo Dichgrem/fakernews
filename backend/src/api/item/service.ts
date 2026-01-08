@@ -1,7 +1,7 @@
 import { status } from "elysia";
 import { db } from "@/db";
 import { eq, and, sql } from "drizzle-orm";
-import { items, users } from "@/db/schema";
+import { items, users, upvotes } from "@/db/schema";
 import { InsertItem } from "./schema";
 
 export const getItemById = async ({ params }: { params: { id: number } }) => {
@@ -85,10 +85,48 @@ export const voteItem = async ({
   body,
 }: {
   params: { id: number };
-  body: { type: "up" | "down" };
+  body: { type: "up" | "down"; userId: string };
 }) => {
-  const delta = body.type === "up" ? 1 : -1;
+  if (body.type !== "up") {
+    return status(400, "Only upvote is supported");
+  }
 
+  if (!body.userId) {
+    return status(401, "User ID is required");
+  }
+
+  // 检查用户是否已经 upvote 过这个 item
+  const existingUpvote = await db.query.upvotes.findFirst({
+    where: and(
+      eq(upvotes.userId, body.userId),
+      eq(upvotes.itemId, params.id)
+    ),
+  });
+
+  const item = await db.query.items.findFirst({
+    where: eq(items.id, params.id),
+  });
+
+  if (!item || item.deleted || item.dead) {
+    return status(404, "Not Found or Not Votable");
+  }
+
+  let delta = 0;
+
+  if (existingUpvote) {
+    // 已 upvote，取消 upvote（toggle off）
+    await db.delete(upvotes).where(eq(upvotes.id, existingUpvote.id));
+    delta = -1;
+  } else {
+    // 未 upvote，添加 upvote（toggle on）
+    await db.insert(upvotes).values({
+      userId: body.userId,
+      itemId: params.id,
+    });
+    delta = 1;
+  }
+
+  // 更新 item 的分数
   const [updatedItem] = await db
     .update(items)
     .set({
@@ -99,23 +137,14 @@ export const voteItem = async ({
         END
       `,
     })
-    .where(
-      and(
-        eq(items.id, params.id),
-        eq(items.deleted, false),
-        eq(items.dead, false)
-      )
-    )
+    .where(eq(items.id, params.id))
     .returning({
       id: items.id,
       score: items.score,
       by: items.by,
     });
 
-  if (!updatedItem) {
-    return status(404, "Not Found or Not Votable");
-  }
-
+  // 更新作者的 karma
   if (updatedItem.by) {
     await db
       .update(users)
@@ -133,5 +162,46 @@ export const voteItem = async ({
   return {
     id: updatedItem.id,
     score: updatedItem.score,
+    upvoted: !existingUpvote,
   };
+};
+
+export const checkUpvoteStatus = async ({
+  params,
+  query,
+}: {
+  params: { id: number };
+  query: { userId: string };
+}) => {
+  const upvote = await db.query.upvotes.findFirst({
+    where: and(
+      eq(upvotes.userId, query.userId),
+      eq(upvotes.itemId, params.id)
+    ),
+  });
+
+  return {
+    upvoted: !!upvote,
+  };
+};
+
+export const checkMultipleUpvoteStatus = async ({
+  userId,
+  itemIds,
+}: {
+  userId: string;
+  itemIds: number[];
+}) => {
+  const userUpvotes = await db.query.upvotes.findMany({
+    where: eq(upvotes.userId, userId),
+  });
+
+  const upvotedItemIds = new Set(userUpvotes.map(u => u.itemId));
+
+  const statusMap: Record<number, boolean> = {};
+  itemIds.forEach(id => {
+    statusMap[id] = upvotedItemIds.has(id);
+  });
+
+  return statusMap;
 };

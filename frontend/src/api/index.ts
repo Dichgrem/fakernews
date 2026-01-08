@@ -168,10 +168,28 @@ export const api = {
     return true;
   },
 
-  voteItem: async (id: string, type: 'up' | 'down') => {
-    const { error } = await treaty.item.items[id].vote.post({ type });
+  voteItem: async (id: string, type: 'up' | 'down', userId: string) => {
+    const { error, data } = await treaty.item.items[id].vote.post({ type, userId });
     if (error) throw createFriendlyError(error);
-    return true;
+    return data;
+  },
+
+  checkUpvoteStatus: async (id: string, userId: string) => {
+    const { data, error } = await treaty.item.items[id].upvote.get({
+      $query: { userId },
+    });
+    if (error) throw createFriendlyError(error);
+    return data?.upvoted || false;
+  },
+
+  // 批量检查多个故事的 upvote 状态
+  checkMultipleUpvoteStatus: async (ids: string[], userId: string) => {
+    const { data, error } = await treaty.item.items.upvotes.check.post({
+      userId,
+      itemIds: ids.map(id => Number(id)),
+    });
+    if (error) throw createFriendlyError(error);
+    return data || {};
   },
 
   getUserSubmittedItems: async (userId: string, type?: 'story' | 'comment' | 'job') => {
