@@ -1,7 +1,8 @@
 <script setup>
 import { ref, computed } from "vue";
 import { RouterLink } from "vue-router";
-// The component imports itself for recursive rendering
+import { api } from "@/api";
+import { useAuth } from "../auth";
 import CommentItem from "./CommentItem.vue";
 
 const props = defineProps({
@@ -11,7 +12,10 @@ const props = defineProps({
   },
 });
 
+const auth = useAuth();
 const isCollapsed = ref(false);
+const showReplyForm = ref(false);
+const replyText = ref("");
 
 const timeAgo = (timestamp) => {
   if (!timestamp) return "";
@@ -36,6 +40,25 @@ const hasChildren = computed(
 const toggleCollapse = () => {
   isCollapsed.value = !isCollapsed.value;
 };
+
+const submitReply = async () => {
+  if (!replyText.value.trim() || !auth.user.value) return;
+  try {
+    const comment = await api.submitComment(
+      props.comment.id,
+      replyText.value,
+      auth.user.value
+    );
+    if (!props.comment.children) {
+      props.comment.children = [];
+    }
+    props.comment.children.push(comment);
+    replyText.value = "";
+    showReplyForm.value = false;
+  } catch (error) {
+    console.error("Failed to submit reply:", error);
+  }
+};
 </script>
 
 <template>
@@ -53,6 +76,22 @@ const toggleCollapse = () => {
 
     <div v-if="!isCollapsed" class="comment-body">
       <div class="comment-text" v-html="comment.text" />
+
+      <button @click="showReplyForm = !showReplyForm" class="reply-btn">
+        {{ showReplyForm ? 'Cancel' : 'Reply' }}
+      </button>
+
+      <div v-if="showReplyForm" class="reply-form">
+        <textarea
+          v-model="replyText"
+          placeholder="Write a reply..."
+          rows="3"
+          class="reply-input"
+        />
+        <button @click="submitReply" class="submit-reply-btn">
+          Submit Reply
+        </button>
+      </div>
 
       <div v-if="hasChildren" class="comment-children">
         <CommentItem
@@ -126,5 +165,62 @@ const toggleCollapse = () => {
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+.reply-btn {
+  margin-top: 8px;
+  padding: 4px 12px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.reply-btn:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.reply-form {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.reply-input {
+  resize: vertical;
+  min-height: 60px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: inherit;
+}
+
+.reply-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.submit-reply-btn {
+  align-self: flex-start;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: white;
+  background-color: var(--accent);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.submit-reply-btn:hover {
+  background-color: var(--accent-hover);
 }
 </style>

@@ -32,15 +32,14 @@ const timeAgo = computed(() => {
 });
 
 const handleUpvote = async (event) => {
-  event.stopPropagation(); // Prevent parent RouterLink from navigating
+  event.stopPropagation();
+  
+  props.story.score += 1;
   
   try {
-    const result = await api.voteItem(props.story.id, 'up');
-    // Update the story's score locally
-    if (result && result.score !== undefined) {
-      props.story.score = result.score;
-    }
+    await api.voteItem(props.story.id, 'up');
   } catch (error) {
+    props.story.score -= 1;
     console.error("Failed to upvote:", error);
   }
 };
