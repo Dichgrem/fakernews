@@ -33,14 +33,68 @@ import { ref, onMounted } from "vue";
 import { api } from "../api";
 import CommentItem from "../components/CommentItem.vue";
 import LoadingSpinner from "../components/LoadingSpinner.vue";
+import { useAuth } from "../auth";
 
+const auth = useAuth();
 const comments = ref([]);
 const loading = ref(true);
 const error = ref(null);
 
+// Helper function to collect all comment IDs from a comment tree
+const collectCommentIds = (commentList) => {
+  const ids = [];
+  const traverse = (comments) => {
+    if (!comments) return;
+    comments.forEach(comment => {
+      if (comment.id) {
+        ids.push(comment.id.toString());
+      }
+      if (comment.children && comment.children.length > 0) {
+        traverse(comment.children);
+      }
+    });
+  };
+  traverse(commentList);
+  return ids;
+};
+
+// Helper function to apply upvote status to comment tree
+const applyUpvoteStatus = (commentList, statusMap) => {
+  const traverse = (comments) => {
+    if (!comments) return;
+    comments.forEach(comment => {
+      if (comment.id !== undefined) {
+        comment.upvoted = statusMap[comment.id] || false;
+      }
+      if (comment.children && comment.children.length > 0) {
+        traverse(comment.children);
+      }
+    });
+  };
+  traverse(commentList);
+};
+
+const loadUpvoteStatus = async (commentList) => {
+  if (!auth.user.value || !commentList || commentList.length === 0) return;
+
+  try {
+    const commentIds = collectCommentIds(commentList);
+    if (commentIds.length === 0) return;
+
+    const statusMap = await api.checkMultipleUpvoteStatus(commentIds, auth.user.value);
+    applyUpvoteStatus(commentList, statusMap);
+  } catch (e) {
+    console.error("Error loading comment upvote status:", e);
+  }
+};
+
 onMounted(async () => {
     try {
-        comments.value = await api.getTopComments();
+        const _comments = await api.getTopComments();
+        comments.value = _comments;
+
+        // Load upvote status for comments
+        await loadUpvoteStatus(_comments);
     } catch (e) {
         error.value = e.message;
     } finally {

@@ -17,6 +17,54 @@ const newComment = ref("");
 
 const storyId = computed(() => route.params.id);
 
+// Helper function to collect all comment IDs from a comment tree
+const collectCommentIds = (commentList) => {
+  const ids = [];
+  const traverse = (comments) => {
+    if (!comments) return;
+    comments.forEach(comment => {
+      if (comment.id) {
+        ids.push(comment.id.toString());
+      }
+      if (comment.children && comment.children.length > 0) {
+        traverse(comment.children);
+      }
+    });
+  };
+  traverse(commentList);
+  return ids;
+};
+
+// Helper function to apply upvote status to comment tree
+const applyUpvoteStatus = (commentList, statusMap) => {
+  const traverse = (comments) => {
+    if (!comments) return;
+    comments.forEach(comment => {
+      if (comment.id !== undefined) {
+        comment.upvoted = statusMap[comment.id] || false;
+      }
+      if (comment.children && comment.children.length > 0) {
+        traverse(comment.children);
+      }
+    });
+  };
+  traverse(commentList);
+};
+
+const loadUpvoteStatus = async (commentList) => {
+  if (!auth.user.value || !commentList || commentList.length === 0) return;
+
+  try {
+    const commentIds = collectCommentIds(commentList);
+    if (commentIds.length === 0) return;
+
+    const statusMap = await api.checkMultipleUpvoteStatus(commentIds, auth.user.value);
+    applyUpvoteStatus(commentList, statusMap);
+  } catch (e) {
+    console.error("Error loading comment upvote status:", e);
+  }
+};
+
 const timeAgo = (timestamp) => {
   if (!timestamp) return "";
   const seconds = Math.floor((Date.now() - timestamp * 1000) / 1000);
@@ -45,6 +93,9 @@ const loadData = async () => {
     ]);
     story.value = _story;
     comments.value = _comments;
+
+    // Load upvote status for comments
+    await loadUpvoteStatus(_comments);
   } catch (e) {
     error.value = e instanceof Error ? e.message : "Failed to load story.";
     console.error(e);

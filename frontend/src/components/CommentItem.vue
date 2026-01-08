@@ -17,6 +17,8 @@ const isCollapsed = ref(false);
 const showReplyForm = ref(false);
 const replyText = ref("");
 
+const isUpvoted = computed(() => props.comment.upvoted || false);
+
 const timeAgo = (timestamp) => {
   if (!timestamp) return "";
   const seconds = Math.floor((Date.now() - timestamp) / 1000);
@@ -39,6 +41,32 @@ const hasChildren = computed(
 
 const toggleCollapse = () => {
   isCollapsed.value = !isCollapsed.value;
+};
+
+const handleUpvote = async () => {
+  if (!auth.user.value) {
+    alert("Please log in to upvote");
+    return;
+  }
+
+  // Optimistic update
+  const wasUpvoted = isUpvoted.value;
+  props.comment.upvoted = !wasUpvoted;
+  props.comment.score += wasUpvoted ? -1 : 1;
+
+  try {
+    const result = await api.voteItem(props.comment.id, 'up', auth.user.value);
+    // Sync with server response
+    if (result) {
+      props.comment.score = result.score;
+      props.comment.upvoted = result.upvoted;
+    }
+  } catch (error) {
+    // Rollback on error
+    props.comment.upvoted = wasUpvoted;
+    props.comment.score += wasUpvoted ? 1 : -1;
+    console.error("Failed to toggle upvote:", error);
+  }
 };
 
 const submitReply = async () => {
@@ -68,6 +96,17 @@ const submitReply = async () => {
         <span v-if="isCollapsed">[+]</span>
         <span v-else>[–]</span>
       </button>
+      <button
+        @click="handleUpvote"
+        class="upvote-btn"
+        :class="{ upvoted: isUpvoted }"
+        title="Upvote"
+      >
+        <svg width="10" height="10" viewBox="0 0 10 10">
+          <path d="M5 0 L10 10 L0 10 Z" fill="currentColor" />
+        </svg>
+      </button>
+      <span class="comment-score">{{ comment.score }}</span>
       <RouterLink :to="`/user/${comment.by}`" class="comment-author">
         {{ comment.by }}
       </RouterLink>
@@ -127,6 +166,34 @@ const submitReply = async () => {
 }
 .toggle-btn:hover {
   color: var(--accent);
+}
+
+.upvote-btn {
+  padding: 4px;
+  color: var(--text-tertiary);
+  transition: all 0.2s;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  display: flex;
+  align-items: center;
+}
+
+.upvote-btn:hover {
+  color: var(--accent);
+  transform: scale(1.2);
+}
+
+.upvote-btn.upvoted {
+  color: #ff6600;
+}
+
+.comment-score {
+  font-weight: 500;
+  color: var(--text-primary);
+  font-size: 13px;
+  min-width: 20px;
+  text-align: center;
 }
 
 .comment-author {
